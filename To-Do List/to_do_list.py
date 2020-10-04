@@ -28,26 +28,31 @@ def ui():
         action = int(input("1) Today's tasks\n"
                            "2) Week's tasks\n"
                            "3) All tasks\n"
-                           "4) Add task\n"
+                           "4) Missed tasks\n"
+                           "5) Add task\n"
+                           "6) Delete task\n"
                            "0) Exit\n"))
         if action == 1:
             print()
-            get_day_tasks(today)
+            print_day_tasks(today)
         elif action == 2:
-            get_week_tasks()
+            print_week_tasks()
         elif action == 3:
-            get_all_tasks()
+            print_all_tasks()
         elif action == 4:
+            print_missed_tasks()
+        elif action == 5:
             add_task()
+        elif action == 6:
+            delete_task()
         elif action == 0:
             print('\nBye!')
             exit()
 
 
-def get_day_tasks(current_day, current_day_name='Today'):
+def print_day_tasks(current_day, current_day_name='Today'):
     print(f"{current_day_name} {current_day.day} {current_day.strftime('%b')}:")
     rows = session.query(Table).filter(Table.deadline == current_day.date()).all()
-
     if rows:
         for i, row in enumerate(rows):
             print(f'{i + 1}. {row.task}')
@@ -56,34 +61,61 @@ def get_day_tasks(current_day, current_day_name='Today'):
         print('Nothing to do!\n')
 
 
-def get_week_tasks():
+def print_week_tasks():
     print()
     current_day = today
     for i in range(today.weekday(), today.weekday() + 7):
-        get_day_tasks(current_day, current_day.strftime('%A'))
+        print_day_tasks(current_day, current_day.strftime('%A'))
         current_day += timedelta(days=1)
 
 
-def get_all_tasks():
+def print_all_tasks():
     print('\nAll tasks:')
     rows = session.query(Table).order_by(Table.deadline).all()
-
     if rows:
-        for i, row in enumerate(rows):
-            print(f"{i + 1}. {row.task}. {row.deadline.day} {row.deadline.strftime('%b')}")
-        print()
+        print_given_tasks(rows)
     else:
-        print('Nothing to do!\n')
+        print('Nothing to do!')
+    print()
 
 
 def add_task():
-    task = input('\nEnter task\n')
-    deadline_string = input('Enter deadline:\n')
-    deadline = datetime.strptime(deadline_string, '%Y-%m-%d').date()
-
+    task = input('\nEnter task:\n')
+    deadline = datetime.strptime(input('Enter deadline:\n'), '%Y-%m-%d').date()
     session.add(Table(task=task, deadline=deadline))
     session.commit()
     print('The task has been added!\n')
+
+
+def print_missed_tasks():
+    print('\nMissed tasks:')
+    rows = session.query(Table)\
+        .filter(Table.deadline < today.date())\
+        .order_by(Table.deadline).all()
+    if rows:
+        print_given_tasks(rows)
+    else:
+        print('Nothing is missed!')
+    print()
+
+
+def delete_task():
+    rows = session.query(Table).order_by(Table.deadline).all()
+    if rows:
+        print('\nChoose the number of the task you want to delete:')
+        print_given_tasks(rows)
+        delete_row = rows[int(input()) - 1]
+        session.delete(delete_row)
+        session.commit()
+        print('The task has been deleted!\n')
+    else:
+        print('\nThere is nothing to delete!\n')
+
+
+def print_given_tasks(rows):
+    for i, row in enumerate(rows):
+        print(f"{i + 1}. {row.task}. "
+              f"{row.deadline.day} {row.deadline.strftime('%b')}")
 
 
 def delete_table():
